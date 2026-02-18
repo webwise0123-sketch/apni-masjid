@@ -77,6 +77,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeftIcon, MapPinIcon, InfoIcon, Loader2Icon, CheckCircleIcon } from 'lucide-vue-next'
+import { supabase } from '../supabase'
 
 const router = useRouter()
 const loading = ref(false)
@@ -118,11 +119,29 @@ const submitMasjid = async () => {
    if (!form.lat) return
    
    loading.value = true
-   // Simulate API Call
-   await new Promise(resolve => setTimeout(resolve, 1500))
    
-   loading.value = false
-   alert("Masjid submitted for verification! JazakAllah Khair.")
-   router.push('/')
+   try {
+     const { error } = await supabase
+       .from('masjids')
+       .insert([
+         { 
+           name: form.name, 
+           city: form.city, 
+           lat: form.lat, 
+           lng: form.lng,
+           verified: false 
+         }
+       ])
+
+     if (error) throw error
+
+     alert("Masjid submitted for verification! JazakAllah Khair.")
+     router.push('/')
+   } catch (error) {
+     console.error('Error submitting masjid:', error)
+     alert('Failed to submit masjid. Please try again.')
+   } finally {
+     loading.value = false
+   }
 }
 </script>

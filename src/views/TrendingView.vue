@@ -37,42 +37,44 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { HeartIcon, MessageCircleIcon, Share2Icon } from 'lucide-vue-next'
+import { supabase } from '../supabase'
 
-const posts = ref([
-  {
-    id: 1,
-    user: "Ahmed Khan",
-    masjid: "Rahmania Masjid",
-    time: "2 hours ago",
-    content: "Alhamdulillah, the new carpet installation is complete! The masjid looks beautiful. Please join us for Maghrib today.",
-    image: "https://placehold.co/600x400/10b981/ffffff?text=New+Carpet",
-    avatar: "https://placehold.co/100x100/10b981/ffffff?text=AK",
-    likes: 45,
-    comments: 12
-  },
-  {
-    id: 2,
-    user: "Masjid Committee",
-    masjid: "Jamia Masjid",
-    time: "5 hours ago",
-    content: "Correction: The Asar Jamat time has changed to 5:15 PM starting tomorrow. Please take note.",
-    image: null,
-    avatar: "https://placehold.co/100x100/059669/ffffff?text=MC",
-    likes: 89,
-    comments: 5
-  },
-   {
-    id: 3,
-    user: "Salim Merchant",
-    masjid: "Nurul Islam",
-    time: "1 day ago",
-    content: "Who is attending the Tafsir session this Thursday? I can offer a ride to anyone from Kurla.",
-    image: null,
-    avatar: "https://placehold.co/100x100/047857/ffffff?text=SM",
-    likes: 23,
-    comments: 8
-  }
-])
+const posts = ref([])
+const loading = ref(true)
+
+const fetchPosts = async () => {
+    loading.value = true
+    try {
+        const { data, error } = await supabase
+            .from('posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            
+        if (error) throw error
+        
+        if (data) {
+            posts.value = data.map(post => ({
+                id: post.id,
+                user: post.user_name || 'Anonymous',
+                masjid: post.masjid_name,
+                time: new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                content: post.content,
+                image: null, // Placeholder as we don't have image upload yet
+                avatar: `https://ui-avatars.com/api/?name=${post.user_name || 'User'}&background=10b981&color=fff`,
+                likes: post.likes || 0,
+                comments: post.comments || 0
+            }))
+        }
+    } catch (e) {
+        console.error("Error fetching posts:", e)
+    } finally {
+        loading.value = false
+    }
+}
+
+onMounted(() => {
+    fetchPosts()
+})
 </script>

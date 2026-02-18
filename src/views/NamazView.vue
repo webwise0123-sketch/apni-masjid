@@ -178,15 +178,56 @@ const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
+// Helper to get formatted address
+const getAddress = async (lat, lon) => {
+    try {
+        // Nominatim requires a User-Agent header
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+            headers: {
+                'User-Agent': 'ApniMasjid/1.0 (web.wise0123@gmail.com)' 
+            }
+        })
+        
+        if (!response.ok) {
+             console.warn("Nominatim rate limit or error", response.status)
+             return "Unknown Location"
+        }
+
+        const data = await response.json()
+        if (data.address) {
+            // Extract meaningful parts, e.g., Area, City
+            const parts = []
+            if (data.address.suburb) parts.push(data.address.suburb)
+            else if (data.address.neighbourhood) parts.push(data.address.neighbourhood)
+            else if (data.address.residential) parts.push(data.address.residential)
+            
+            if (data.address.city) parts.push(data.address.city)
+            else if (data.address.town) parts.push(data.address.town)
+            else if (data.address.village) parts.push(data.address.village)
+            
+            return parts.length > 0 ? parts.join(', ') : "Unknown Location"
+        }
+        return "Unknown Location"
+    } catch (error) {
+        console.error("Error fetching address:", error)
+        return "Unknown Location"
+    }
+}
+
 const getUserLocation = () => {
     loading.value = true
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
                 const { latitude, longitude } = position.coords
                 userLocation.value = [latitude, longitude]
                 center.value = [latitude, longitude]
-                userAddress.value = "Current Location" 
+                
+                // Fetch Address
+                userAddress.value = "Fetching address..."
+                const address = await getAddress(latitude, longitude)
+                userAddress.value = address
+
                 loading.value = false
                 fetchMasjids()
             },
@@ -206,23 +247,49 @@ const getUserLocation = () => {
     }
 }
 
+// Replace masjidsData import with Supabase call
+import { supabase } from '../supabase'
+// Keep local data as failsafe or initial load if needed
+// import masjidsData from '../data/masjids.json' 
+
 const fetchMasjids = async () => {
   loadingMasjids.value = true
   
-  // Recalculate distances based on real location
-  masjids.value = masjidsData.map(m => {
-     const dist = calculateDistance(
-        userLocation.value[0], 
-        userLocation.value[1], 
-        m.lat, 
-        m.lng
-     )
-     return {
-        ...m,
-        distance: dist.toFixed(2), 
-        rawDistance: dist
-     }
-  })
+  try {
+      // Fetch from Supabase
+      const { data, error } = await supabase.from('masjids').select('*')
+      
+      if (error) {
+         console.error("Error fetching masjids:", error)
+         // Fallback to empty or local data if you wish
+         // masjids.value = masjidsData ...
+      } else {
+         // Transform data
+         masjids.value = data.map(m => {
+            const dist = calculateDistance(
+                userLocation.value[0], 
+                userLocation.value[1], 
+                m.lat, 
+                m.lng
+            )
+            return {
+                ...m,
+                distance: dist.toFixed(2), 
+                rawDistance: dist,
+                // Ensure times object exists if missing in DB
+                times: m.times || {
+                    "Fajr": "05:30 AM",
+                    "Dhuhr": "01:30 PM", 
+                    "Asr": "05:15 PM",
+                    "Maghrib": "06:45 PM",
+                    "Isha": "08:30 PM"
+                }
+            }
+         })
+      }
+  } catch (err) {
+      console.error("Unexpected error fetching masjids:", err)
+  }
   
   loadingMasjids.value = false
 }

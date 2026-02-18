@@ -23,17 +23,8 @@
               <input v-model="form.name" type="text" required class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400" placeholder="Enter your name" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mobile Number</label>
-              <div class="flex">
-                <span class="inline-flex items-center px-3 border border-r-0 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 sm:text-sm rounded-l-md font-medium">
-                  +91
-                </span>
-                <input v-model="form.mobile" type="tel" required pattern="[0-9]{10}" class="flex-1 min-w-0 block w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-r-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400" placeholder="00000 00000" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
-              <textarea v-model="form.address" rows="2" class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400" placeholder="City, Area..."></textarea>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+              <input v-model="form.email" type="email" required class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400" placeholder="you@example.com" />
             </div>
           </div>
           <button type="submit" class="w-full mt-6 bg-emerald-600 text-white py-2.5 rounded-lg font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-500/30">
@@ -44,17 +35,17 @@
         <!-- Step 2: OTP -->
         <form v-else @submit.prevent="verifyOtp">
            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-             We've sent a code to <span class="font-bold text-gray-800 dark:text-gray-200">+91 {{ form.mobile }}</span>
+             We've sent a code to <span class="font-bold text-gray-800 dark:text-gray-200">{{ form.email }}</span>
            </p>
            
              <div class="flex gap-2 justify-center mb-6">
                 <input 
-                  v-for="(n, index) in 4"
+                  v-for="(n, index) in 6"
                   :key="index"
                   type="text" 
                   maxlength="1"
                   :ref="(el) => { if (el) otpInputs[index] = el }"
-                  class="w-12 h-14 text-center text-xl font-bold bg-gray-50 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
+                  class="w-10 h-12 text-center text-lg font-bold bg-gray-50 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
                   @input="e => handleOtpInput(e, index)"
                   @keydown.delete="e => handleOtpDelete(e, index)"
                 />
@@ -79,6 +70,7 @@
 import { ref, reactive, nextTick } from 'vue'
 import { XIcon, Loader2Icon } from 'lucide-vue-next'
 import { useSettingsStore } from '../stores/settings'
+import { supabase } from '../supabase'
 
 const props = defineProps({
   isOpen: Boolean
@@ -91,35 +83,53 @@ const isLoading = ref(false)
 const otpInputs = ref([])
 const form = reactive({
   name: '',
-  mobile: '',
-  address: ''
+  email: ''
 })
-const otp = ref(['', '', '', ''])
+const otp = ref(['', '', '', '', '', ''])
 const settingsStore = useSettingsStore()
 
 const close = () => {
   emit('close')
   setTimeout(() => {
      step.value = 1
-     otp.value = ['', '', '', '']
+     otp.value = ['', '', '', '', '', '']
   }, 300)
 }
 
+
+
 const sendOtp = async () => {
+  if (!form.email || !form.name) return
+  
   isLoading.value = true
-  await new Promise(resolve => setTimeout(resolve, 800))
-  isLoading.value = false
-  // For demo, we assume OTP is sent automatically.
-  // In a real app, this is where you'd trigger the SMS API.
-  step.value = 2
-  nextTick(() => {
-    if(otpInputs.value[0]) otpInputs.value[0].focus()
-  })
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: form.email,
+      options: {
+        shouldCreateUser: true,
+        data: {
+          full_name: form.name
+        }
+      }
+    })
+    
+    if (error) throw error
+    
+    step.value = 2
+    nextTick(() => {
+      if(otpInputs.value[0]) otpInputs.value[0].focus()
+    })
+  } catch (error) {
+    console.error("Error sending OTP:", error)
+    alert("Failed to send OTP: " + error.message)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const handleOtpInput = (e, index) => {
   const val = e.target.value
-  if (val && index < 3) {
+  if (val && index < 5) {
     otpInputs.value[index + 1].focus()
   }
   otp.value[index] = val
@@ -134,14 +144,33 @@ const handleOtpDelete = (e, index) => {
 
 const verifyOtp = async () => {
   isLoading.value = true
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  const token = otp.value.join('')
   
-  // Here we would verify the OTP with the backend.
-  // For this prototype, we just accept anything.
-  isLoading.value = false
-  
-  settingsStore.login(form)
-  emit('login-success', form)
-  close()
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: form.email,
+      token: token,
+      type: 'email'
+    })
+    
+    if (error) throw error
+    
+    const userProfile = {
+       id: data.user.id,
+       name: form.name, // In real app, fetch from metadata if existing user
+       email: form.email
+    }
+    
+    settingsStore.login(userProfile)
+    emit('login-success', userProfile)
+    close()
+  } catch (error) {
+    console.error("Error verifying OTP:", error)
+    alert("Invalid OTP or expired. Please try again.")
+    // Clear OTP inputs on fail
+    otp.value = ['', '', '', '', '', ''] 
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>

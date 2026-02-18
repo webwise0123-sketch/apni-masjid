@@ -45,7 +45,7 @@
                class="w-full text-xs text-emerald-600 dark:text-emerald-400 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md py-1.5 pl-2 pr-6 outline-none appearance-none cursor-pointer"
              >
                <option disabled value="">Select Nearby Masjid</option>
-               <option v-for="masjid in masjidsData" :key="masjid.id" :value="masjid.name">
+               <option v-for="masjid in availableMasjids" :key="masjid.id" :value="masjid.name">
                  {{ masjid.name }} ({{ masjid.city || 'Mumbai' }})
                </option>
              </select>
@@ -109,11 +109,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ImageIcon, MapPinIcon, Loader2Icon, CheckCircleIcon, LockIcon, InfoIcon, ChevronDownIcon } from 'lucide-vue-next'
 import LoginModal from '../components/LoginModal.vue'
 import { useSettingsStore } from '../stores/settings'
-import masjidsData from '../data/masjids.json'
+import { supabase } from '../supabase'
+import masjidsData from '../data/masjids.json' // Keep as fallback/initial list if needed, or fetch all from Supabase
 
 const content = ref('')
 const loading = ref(false)
@@ -122,10 +123,26 @@ const isLoginOpen = ref(false)
 const postType = ref('update') // 'update' or 'event'
 const selectedMasjid = ref('')
 const settingsStore = useSettingsStore()
+// We can use a ref for masjids list if we want to fetch from DB dynamically
+const availableMasjids = ref(masjidsData)
 
 const getInitials = (name) => {
    return name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'ME'
 }
+
+// Optional: Fetch real masjids list from DB
+const fetchMasjids = async () => {
+    try {
+        const { data, error } = await supabase.from('masjids').select('*')
+        if (data) availableMasjids.value = [...masjidsData, ...data] // Merge local and remote for now
+    } catch (e) {
+        console.error("Error fetching masjids for dropdown", e)
+    }
+}
+
+onMounted(() => {
+    fetchMasjids()
+})
 
 const submitPost = async () => {
     if (!content.value || !selectedMasjid.value) return
@@ -133,16 +150,33 @@ const submitPost = async () => {
     loading.value = true
     success.value = false
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    loading.value = false
-    success.value = true
-    content.value = ''
-    // selectedMasjid.value = '' // Optional: reset selection
-    
-    setTimeout(() => {
-        success.value = false
-    }, 3000)
+    try {
+        const { error } = await supabase
+            .from('posts')
+            .insert([
+                {
+                    user_name: settingsStore.user.name,
+                    masjid_name: selectedMasjid.value,
+                    content: content.value,
+                    type: postType.value,
+                    likes: 0,
+                    comments: 0
+                }
+            ])
+
+        if (error) throw error
+
+        success.value = true
+        content.value = ''
+        
+        setTimeout(() => {
+            success.value = false
+        }, 3000)
+    } catch (error) {
+        console.error('Error submitting post:', error)
+        alert('Failed to post. Please try again.')
+    } finally {
+        loading.value = false
+    }
 }
 </script>

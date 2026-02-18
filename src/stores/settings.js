@@ -1,3 +1,4 @@
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
@@ -20,14 +21,19 @@ export const useSettingsStore = defineStore('settings', () => {
     const isDarkMode = ref(localStorage.getItem('darkMode') === 'true')
 
     // Initialize Theme
-    if (localStorage.getItem('darkMode') === 'true' ||
-        (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        isDarkMode.value = true
-        document.documentElement.classList.add('dark')
-    } else {
-        isDarkMode.value = false
-        document.documentElement.classList.remove('dark')
+    const initTheme = () => {
+        if (localStorage.getItem('darkMode') === 'true' ||
+            (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            isDarkMode.value = true
+            document.documentElement.classList.add('dark')
+        } else {
+            isDarkMode.value = false
+            document.documentElement.classList.remove('dark')
+        }
     }
+
+    // Call immediately
+    initTheme()
 
     const toggleDarkMode = () => {
         isDarkMode.value = !isDarkMode.value
