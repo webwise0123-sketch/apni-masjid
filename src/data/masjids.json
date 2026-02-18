@@ -1,0 +1,82 @@
+[
+    {
+        "id": 1,
+        "name": "Rahmania Masjid",
+        "city": "Mumbai",
+        "lat": 19.076,
+        "lng": 72.8777,
+        "verified": true,
+        "times": {
+            "Fajr": "5:30 AM",
+            "Zohar": "1:15 PM",
+            "Asar": "5:00 PM",
+            "Maghrib": "6:40 PM",
+            "Isha": "7:50 PM"
+        },
+        "events": [
+            {
+                "title": "Qur'an Tafsir Bayan",
+                "time": "6:30 PM",
+                "date": "2026-02-12"
+            }
+        ],
+        "image": "https://placehold.co/600x400/10b981/ffffff?text=Rahmania+Masjid"
+    },
+    {
+        "id": 2,
+        "name": "Jamia Masjid",
+        "city": "Mumbai",
+        "lat": 19.080,
+        "lng": 72.8800,
+        "verified": false,
+        "times": {
+            "Fajr": "5:35 AM",
+            "Zohar": "1:20 PM",
+            "Asar": "5:05 PM",
+            "Maghrib": "6:45 PM",
+            "Isha": "7:55 PM"
+        },
+        "events": [],
+        "image": "https://placehold.co/600x400/059669/ffffff?text=Jamia+Masjid"
+    },
+    {
+        "id": 3,
+        "name": "Nurul Islam",
+        "city": "Mumbai",
+        "lat": 19.070,
+        "lng": 72.8700,
+        "verified": true,
+        "times": {
+            "Fajr": "5:40 AM",
+            "Zohar": "1:30 PM",
+            "Asar": "5:15 PM",
+            "Maghrib": "6:50 PM",
+            "Isha": "8:00 PM"
+        },
+        "events": [
+            {
+                "title": "Weekly Dars",
+                "time": "After Maghrib",
+                "date": "Every Thursday"
+            }
+        ],
+        "image": "https://placehold.co/600x400/047857/ffffff?text=Nurul+Islam"
+    },
+    {
+        "id": 4,
+        "name": "Aqsa Masjid",
+        "city": "Thane",
+        "lat": 19.2183,
+        "lng": 72.9781,
+        "verified": true,
+        "times": {
+            "Fajr": "5:45 AM",
+            "Zohar": "1:30 PM",
+            "Asar": "5:15 PM",
+            "Maghrib": "6:55 PM",
+            "Isha": "8:10 PM"
+        },
+        "events": [],
+        "image": "https://placehold.co/600x400/047857/ffffff?text=Aqsa+Masjid"
+    }
+]
