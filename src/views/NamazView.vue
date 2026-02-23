@@ -9,7 +9,6 @@
       </div>
       
       <div class="flex items-center gap-2">
-        <!-- Add Masjid Button (Small "+" Icon) -->
         <button 
            @click="router.push('/add-masjid')"
            class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-gray-700 hover:text-emerald-600 transition-colors"
@@ -58,7 +57,7 @@
           v-for="masjid in filteredMasjids" 
           :key="masjid.id"
           :lat-lng="[masjid.lat, masjid.lng]"
-          @click="router.push(`/masjid/${masjid.id}`)"
+          @click="goToMasjid(masjid)"
         >
         </l-marker>
       </l-map>
@@ -82,7 +81,7 @@
           <button 
              v-for="dist in distances" 
              :key="dist.value"
-             @click="selectedDistance = dist.value"
+             @click="changeDistance(dist.value)"
              :class="[
                 'px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
                 selectedDistance === dist.value 
@@ -98,27 +97,38 @@
     <!-- Nearby Masjids -->
     <section>
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Nearby Masjids</h2>
+        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">
+          Nearby Masjids
+          <span v-if="!loadingMasjids && filteredMasjids.length > 0" class="text-sm font-normal text-gray-400 ml-1">({{ filteredMasjids.length }})</span>
+        </h2>
         <button @click="router.push('/masjids')" class="text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:underline">See all</button>
       </div>
 
-      <div class="space-y-4">
-        <div v-if="loadingMasjids" class="space-y-4">
-           <div v-for="n in 3" :key="n" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm animate-pulse h-32"></div>
+      <div class="space-y-3">
+        <!-- Loading State -->
+        <div v-if="loadingMasjids" class="flex flex-col items-center py-8 gap-3">
+           <div class="relative">
+             <div class="w-12 h-12 rounded-full border-4 border-gray-200 dark:border-gray-700"></div>
+             <div class="w-12 h-12 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin absolute top-0 left-0"></div>
+           </div>
+           <p class="text-sm text-gray-400 dark:text-gray-500 animate-pulse">Finding nearby masjids...</p>
         </div>
         
+        <!-- Masjid List -->
         <div v-else-if="filteredMasjids.length > 0">
            <MasjidCard 
              v-for="masjid in filteredMasjids" 
              :key="masjid.id" 
              :masjid="masjid" 
-             @click="router.push(`/masjid/${masjid.id}`)"
+             @click="goToMasjid(masjid)"
            />
         </div>
 
+        <!-- Empty State -->
         <div v-else class="text-center py-8 text-gray-400 dark:text-gray-500">
+           <div class="text-4xl mb-3">🕌</div>
            <p>No masjids found within {{ selectedDistance }}km.</p>
-           <button @click="selectedDistance = 5.0" class="text-emerald-500 text-sm mt-2">Expand search radius</button>
+           <button @click="changeDistance(5.0)" class="text-emerald-500 text-sm mt-2 font-medium hover:underline">Expand to 5km</button>
         </div>
       </div>
     </section>
@@ -128,13 +138,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MapPinIcon, CrosshairIcon, Loader2Icon, PlusIcon } from 'lucide-vue-next'
 import MasjidCard from '../components/MasjidCard.vue'
-import masjidsData from '../data/masjids.json'
 import LoginModal from '../components/LoginModal.vue'
 import { useSettingsStore } from '../stores/settings'
+import { supabase } from '../supabase'
 import 'leaflet/dist/leaflet.css'
 import { LMap, LTileLayer, LMarker, LIcon } from '@vue-leaflet/vue-leaflet'
 
@@ -148,21 +158,21 @@ const showLogin = ref(false)
 const userAddress = ref("Locating...")
 
 // Map Settings
-const zoom = ref(15)
+const zoom = ref(14)
 const userLocation = ref([0, 0]) 
-const center = ref([19.076, 72.8777]) // Default fallback (Mumbai)
+const center = ref([19.076, 72.8777])
 
 // Distance Filter
 const selectedDistance = ref(1.0)
 const distances = [
-   { label: '0.5 km', value: 0.5 },
-   { label: '1.0 km', value: 1.0 },
-   { label: '2.0 km', value: 2.0 },
+   { label: '1 km', value: 1.0 },
+   { label: '2 km', value: 2.0 },
+   { label: '5 km', value: 5.0 }
 ]
 
-// Haversine Algo
+// Haversine
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371 // km
+  const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLon = (lon2 - lon1) * Math.PI / 180
   const a = 
@@ -178,40 +188,23 @@ const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-// Helper to get formatted address
 const getAddress = async (lat, lon) => {
     try {
-        // Nominatim requires a User-Agent header
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
-            headers: {
-                'User-Agent': 'ApniMasjid/1.0 (web.wise0123@gmail.com)' 
-            }
+            headers: { 'User-Agent': 'ApniMasjid/1.0 (web.wise0123@gmail.com)' }
         })
-        
-        if (!response.ok) {
-             console.warn("Nominatim rate limit or error", response.status)
-             return "Unknown Location"
-        }
-
+        if (!response.ok) return "Unknown Location"
         const data = await response.json()
         if (data.address) {
-            // Extract meaningful parts, e.g., Area, City
             const parts = []
             if (data.address.suburb) parts.push(data.address.suburb)
             else if (data.address.neighbourhood) parts.push(data.address.neighbourhood)
-            else if (data.address.residential) parts.push(data.address.residential)
-            
             if (data.address.city) parts.push(data.address.city)
             else if (data.address.town) parts.push(data.address.town)
-            else if (data.address.village) parts.push(data.address.village)
-            
             return parts.length > 0 ? parts.join(', ') : "Unknown Location"
         }
         return "Unknown Location"
-    } catch (error) {
-        console.error("Error fetching address:", error)
-        return "Unknown Location"
-    }
+    } catch { return "Unknown Location" }
 }
 
 const getUserLocation = () => {
@@ -222,18 +215,13 @@ const getUserLocation = () => {
                 const { latitude, longitude } = position.coords
                 userLocation.value = [latitude, longitude]
                 center.value = [latitude, longitude]
-                
-                // Fetch Address
                 userAddress.value = "Fetching address..."
                 const address = await getAddress(latitude, longitude)
                 userAddress.value = address
-
                 loading.value = false
                 fetchMasjids()
             },
-            (error) => {
-                console.error("Error getting location: ", error)
-                // Fallback to Mumbai
+            () => {
                 userLocation.value = [19.076, 72.8777]
                 center.value = [19.076, 72.8777]
                 userAddress.value = "Mumbai (Default)"
@@ -243,65 +231,129 @@ const getUserLocation = () => {
         )
     } else {
         loading.value = false
-        alert("Geolocation is not supported by this browser.")
     }
 }
 
-// Replace masjidsData import with Supabase call
-import { supabase } from '../supabase'
-// Keep local data as failsafe or initial load if needed
-// import masjidsData from '../data/masjids.json' 
+// ========== OVERPASS API ==========
+const fetchNearbyMasjidsFromOverpass = async (lat, lon, radiusMeters) => {
+  try {
+    // Ensure we fetch at least 15km to have a good pool of results
+    const fetchRadius = Math.max(radiusMeters, 15000)
+    const query = `
+      [out:json][timeout:30];
+      (
+        node["amenity"="place_of_worship"]["religion"~"muslim",i](around:${fetchRadius},${lat},${lon});
+        way["amenity"="place_of_worship"]["religion"~"muslim",i](around:${fetchRadius},${lat},${lon});
+        relation["amenity"="place_of_worship"]["religion"~"muslim",i](around:${fetchRadius},${lat},${lon});
+        node["building"="mosque"](around:${fetchRadius},${lat},${lon});
+        way["building"="mosque"](around:${fetchRadius},${lat},${lon});
+        relation["building"="mosque"](around:${fetchRadius},${lat},${lon});
+      );
+      out center;
+    `
+    const response = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query)
+    })
+    
+    if (!response.ok) {
+      console.error('Overpass API error:', response.status)
+      return []
+    }
+    
+    const data = await response.json()
+    
+    return data.elements
+      .map((el) => {
+        const elLat = el.lat || (el.center && el.center.lat) || 0
+        const elLng = el.lon || (el.center && el.center.lon) || 0
+        if (!elLat || !elLng) return null
+        
+        const name = (el.tags && (el.tags.name || el.tags['name:en'] || el.tags['name:hi'] || el.tags['name:ur'])) || 'Masjid'
+        const city = (el.tags && (el.tags['addr:city'] || el.tags['addr:suburb'] || el.tags['addr:district'] || el.tags['addr:state'])) || ''
+        
+        return {
+          id: `osm-${el.type}-${el.id}`,
+          osmId: el.id,
+          name: name,
+          city: city,
+          lat: elLat,
+          lng: elLng,
+          verified: false,
+          isFromAPI: true,
+          times: null,
+          events: [],
+          image: `https://placehold.co/600x400/10b981/ffffff?text=${encodeURIComponent(name.substring(0, 18))}`
+        }
+      })
+      .filter(Boolean)
+  } catch (error) {
+    console.error('Error fetching from Overpass API:', error)
+    return []
+  }
+}
 
 const fetchMasjids = async () => {
   loadingMasjids.value = true
+  const lat = userLocation.value[0]
+  const lon = userLocation.value[1]
   
+  let allMasjids = []
+  
+  // 1. Fetch from Supabase
   try {
-      // Fetch from Supabase
-      const { data, error } = await supabase.from('masjids').select('*')
-      
-      if (error) {
-         console.error("Error fetching masjids:", error)
-         // Fallback to empty or local data if you wish
-         // masjids.value = masjidsData ...
-      } else {
-         // Transform data
-         masjids.value = data.map(m => {
-            const dist = calculateDistance(
-                userLocation.value[0], 
-                userLocation.value[1], 
-                m.lat, 
-                m.lng
-            )
-            return {
-                ...m,
-                distance: dist.toFixed(2), 
-                rawDistance: dist,
-                // Ensure times object exists if missing in DB
-                times: m.times || {
-                    "Fajr": "05:30 AM",
-                    "Dhuhr": "01:30 PM", 
-                    "Asr": "05:15 PM",
-                    "Maghrib": "06:45 PM",
-                    "Isha": "08:30 PM"
-                }
-            }
-         })
-      }
+    const { data, error } = await supabase.from('masjids').select('*')
+    if (!error && data) {
+      allMasjids = data.map(m => {
+        const dist = calculateDistance(lat, lon, m.lat, m.lng)
+        return { ...m, distance: dist.toFixed(2), rawDistance: dist, isFromAPI: false, times: m.times || null }
+      })
+    }
   } catch (err) {
-      console.error("Unexpected error fetching masjids:", err)
+    console.error("Supabase error:", err)
+  }
+
+  // 2. Fetch from Overpass API — use larger radius to ensure we get plenty of masjids
+  try {
+    const radiusMeters = Math.max(selectedDistance.value * 1000, 5000)
+    const overpassMasjids = await fetchNearbyMasjidsFromOverpass(lat, lon, radiusMeters)
+    
+    const overpassWithDistance = overpassMasjids.map(m => {
+      const dist = calculateDistance(lat, lon, m.lat, m.lng)
+      return { ...m, distance: dist.toFixed(2), rawDistance: dist }
+    })
+    
+    // Deduplicate by proximity
+    const deduplicated = overpassWithDistance.filter(osm => {
+      return !allMasjids.some(db => calculateDistance(osm.lat, osm.lng, db.lat, db.lng) < 0.05)
+    })
+    
+    allMasjids = [...allMasjids, ...deduplicated]
+  } catch (err) {
+    console.error("Overpass error:", err)
   }
   
+  masjids.value = allMasjids
   loadingMasjids.value = false
+}
+
+// Cache masjid data and navigate
+const goToMasjid = (masjid) => {
+  // Always cache before navigating so detail view can find it
+  localStorage.setItem(`masjid-${masjid.id}`, JSON.stringify(masjid))
+  router.push(`/masjid/${masjid.id}`)
+}
+
+const changeDistance = (dist) => {
+  selectedDistance.value = dist
+  fetchMasjids()
 }
 
 const filteredMasjids = computed(() => {
    return masjids.value
       .filter(m => m.rawDistance <= selectedDistance.value)
       .sort((a, b) => a.rawDistance - b.rawDistance)
-})
-
-watch(selectedDistance, () => {
-    // Re-trigger helps if we were fetching fresh data, but here computing is enough
 })
 
 onMounted(() => {

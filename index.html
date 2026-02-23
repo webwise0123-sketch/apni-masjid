@@ -3,12 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Apni Masjid</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- SEO & App Meta -->
+    <title>Apni Masjid — Find Nearby Masjids & Prayer Times</title>
+    <meta name="description" content="Find nearby masjids, get accurate namaz times, and contribute jamat timings for your community. Install as an app on any device." />
+    <meta name="theme-color" content="#10b981" />
+    
+    <!-- PWA iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Apni Masjid" />
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/10b981/ffffff?text=AM" />
+    
+    <!-- Android/Chrome -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#10b981" />
+    <meta name="msapplication-TileImage" content="https://placehold.co/144x144/10b981/ffffff?text=AM" />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Apni Masjid" />
+    <meta property="og:description" content="Find nearby masjids, get accurate namaz times, and contribute jamat timings." />
+    <meta property="og:type" content="website" />
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Manifest -->
     <link rel="manifest" href="/manifest.json">
+    
+    <!-- Splash Screen Colors -->
+    <style>
+      /* Prevent flash of white on dark mode */
+      html.dark { background-color: #111827; }
+      html:not(.dark) { background-color: #f9fafb; }
+    </style>
   </head>
   <body>
     <div id="app"></div>

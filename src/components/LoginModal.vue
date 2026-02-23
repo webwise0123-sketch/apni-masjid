@@ -32,24 +32,26 @@
           </button>
         </form>
 
-        <!-- Step 2: OTP -->
+        <!-- Step 2: OTP (8 digits to match Supabase) -->
         <form v-else @submit.prevent="verifyOtp">
            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-             We've sent a code to <span class="font-bold text-gray-800 dark:text-gray-200">{{ form.email }}</span>
+             We've sent an 8-digit code to <span class="font-bold text-gray-800 dark:text-gray-200">{{ form.email }}</span>
            </p>
            
-             <div class="flex gap-2 justify-center mb-6">
-                <input 
-                  v-for="(n, index) in 6"
-                  :key="index"
-                  type="text" 
-                  maxlength="1"
-                  :ref="(el) => { if (el) otpInputs[index] = el }"
-                  class="w-10 h-12 text-center text-lg font-bold bg-gray-50 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
-                  @input="e => handleOtpInput(e, index)"
-                  @keydown.delete="e => handleOtpDelete(e, index)"
-                />
-             </div>
+              <div class="flex gap-1.5 justify-center mb-6">
+                 <input 
+                   v-for="(n, index) in 8"
+                   :key="index"
+                   type="text" 
+                   maxlength="1"
+                   inputmode="numeric"
+                   :ref="(el) => { if (el) otpInputs[index] = el }"
+                   class="w-9 h-11 text-center text-base font-bold bg-gray-50 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
+                   @input="e => handleOtpInput(e, index)"
+                   @keydown.delete="e => handleOtpDelete(e, index)"
+                   @paste="handleOtpPaste"
+                 />
+              </div>
 
            <button type="submit" :disabled="isLoading" class="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-500/30 flex justify-center items-center gap-2">
              <Loader2Icon v-if="isLoading" class="w-4 h-4 animate-spin" />
@@ -57,7 +59,7 @@
            </button>
            
            <button type="button" @click="step = 1" class="w-full mt-3 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-             Change Number
+             Change Email
            </button>
         </form>
 
@@ -85,18 +87,16 @@ const form = reactive({
   name: '',
   email: ''
 })
-const otp = ref(['', '', '', '', '', ''])
+const otp = ref(['', '', '', '', '', '', '', ''])
 const settingsStore = useSettingsStore()
 
 const close = () => {
   emit('close')
   setTimeout(() => {
      step.value = 1
-     otp.value = ['', '', '', '', '', '']
+     otp.value = ['', '', '', '', '', '', '', '']
   }, 300)
 }
-
-
 
 const sendOtp = async () => {
   if (!form.email || !form.name) return
@@ -129,7 +129,7 @@ const sendOtp = async () => {
 
 const handleOtpInput = (e, index) => {
   const val = e.target.value
-  if (val && index < 5) {
+  if (val && index < 7) {
     otpInputs.value[index + 1].focus()
   }
   otp.value[index] = val
@@ -140,6 +140,19 @@ const handleOtpDelete = (e, index) => {
     otpInputs.value[index - 1].focus()
   }
   otp.value[index] = '' 
+}
+
+const handleOtpPaste = (e) => {
+  e.preventDefault()
+  const pastedData = e.clipboardData.getData('text').trim()
+  if (pastedData.length <= 8) {
+    for (let i = 0; i < pastedData.length && i < 8; i++) {
+      otp.value[i] = pastedData[i]
+      if (otpInputs.value[i]) otpInputs.value[i].value = pastedData[i]
+    }
+    const focusIndex = Math.min(pastedData.length, 7)
+    if (otpInputs.value[focusIndex]) otpInputs.value[focusIndex].focus()
+  }
 }
 
 const verifyOtp = async () => {
@@ -157,7 +170,7 @@ const verifyOtp = async () => {
     
     const userProfile = {
        id: data.user.id,
-       name: form.name, // In real app, fetch from metadata if existing user
+       name: form.name,
        email: form.email
     }
     
@@ -167,8 +180,9 @@ const verifyOtp = async () => {
   } catch (error) {
     console.error("Error verifying OTP:", error)
     alert("Invalid OTP or expired. Please try again.")
-    // Clear OTP inputs on fail
-    otp.value = ['', '', '', '', '', ''] 
+    otp.value = ['', '', '', '', '', '', '', ''] 
+    // Clear visual inputs too
+    otpInputs.value.forEach(input => { if (input) input.value = '' })
   } finally {
     isLoading.value = false
   }
