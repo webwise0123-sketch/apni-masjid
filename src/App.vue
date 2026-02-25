@@ -3,6 +3,7 @@ import { onMounted, watch } from 'vue'
 import { RouterView } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import InstallPrompt from './components/InstallPrompt.vue'
+import Splashscreen from './components/Splashscreen.vue'
 import { useSettingsStore } from './stores/settings'
 
 const settingsStore = useSettingsStore()
@@ -28,6 +29,7 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 font-sans text-gray-900 dark:text-gray-100">
+    <Splashscreen />
     <RouterView />
     <BottomNav />
     <InstallPrompt />

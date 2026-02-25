@@ -154,12 +154,17 @@
         <div class="p-4 pt-0" ref="eventsSection">
           <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3 text-lg">📅 Events</h3>
           
-          <div v-if="masjid.events && masjid.events.length > 0" class="space-y-3">
+           <div v-if="masjid.events && masjid.events.length > 0" class="space-y-3">
              <div v-for="(event, idx) in masjid.events" :key="idx" class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800">
-                <h4 class="font-bold text-emerald-900 dark:text-emerald-300">{{ event.title }}</h4>
+                <h4 class="font-bold text-emerald-900 dark:text-emerald-300">{{ event.title || event.description || 'Upcoming Event' }}</h4>
                 <div class="flex gap-4 mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                   <div class="flex items-center gap-1"><CalendarIcon class="w-4 h-4"/> {{ event.date }}</div>
-                   <div class="flex items-center gap-1"><ClockIcon class="w-4 h-4"/> {{ event.time }}</div>
+                   <div class="flex items-center gap-1">
+                      <CalendarIcon class="w-4 h-4"/> 
+                      {{ event.date || new Date().toLocaleDateString() }}
+                   </div>
+                   <div class="flex items-center gap-1" v-if="event.time">
+                      <ClockIcon class="w-4 h-4"/> {{ event.time }}
+                   </div>
                 </div>
              </div>
           </div>

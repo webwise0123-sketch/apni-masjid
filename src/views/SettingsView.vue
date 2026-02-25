@@ -60,13 +60,16 @@
 
        <!-- App Info -->
          <section class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden divide-y divide-gray-50 dark:divide-gray-700">
-          <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+          <div @click="showSupport = true" class="p-4 flex items-center justify-between cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition group">
              <div class="flex items-center gap-3">
-                <div class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg"><HelpCircleIcon class="w-5 h-5" /></div>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Help & Support</span>
+                <div class="p-2 bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-300 rounded-lg group-hover:scale-110 transition-transform"><HeartIcon class="w-5 h-5 fill-rose-500/20" /></div>
+                <div class="flex flex-col">
+                   <span class="text-sm font-bold text-gray-800 dark:text-gray-100">Help & Support Us</span>
+                   <span class="text-[10px] text-emerald-600 font-medium">Keep the app running ❤️</span>
+                </div>
              </div>
           </div>
-           <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+           <div @click="showAbout = true" class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
              <div class="flex items-center gap-3">
                 <div class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg"><InfoIcon class="w-5 h-5" /></div>
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-200">About Apni Masjid</span>
@@ -74,23 +77,29 @@
           </div>
          </section>
          
-         <div class="text-center text-xs text-gray-400 dark:text-gray-500 mt-4">
-            v1.0.0 (Prototype)
+         <div class="text-center text-xs text-gray-400 dark:text-gray-500 mt-6 font-medium tracking-wide">
+            Apni Masjid App v1.0.0
          </div>
     </div>
     
     <LoginModal :isOpen="showLogin" @close="showLogin = false" @login-success="showLogin = false" />
+    <AboutModal :isOpen="showAbout" @close="showAbout = false" />
+    <SupportModal :isOpen="showSupport" @close="showSupport = false" />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { BellIcon, MoonIcon, MapIcon, HelpCircleIcon, InfoIcon } from 'lucide-vue-next'
+import { BellIcon, MoonIcon, MapIcon, HelpCircleIcon, InfoIcon, HeartIcon } from 'lucide-vue-next'
 import { useSettingsStore } from '../stores/settings'
 import LoginModal from '../components/LoginModal.vue'
+import AboutModal from '../components/AboutModal.vue'
+import SupportModal from '../components/SupportModal.vue'
 
 const settingsStore = useSettingsStore()
 const showLogin = ref(false)
+const showAbout = ref(false)
+const showSupport = ref(false)
 
 const getInitials = (name) => {
     if (!name) return '?'
